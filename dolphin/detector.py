@@ -2,12 +2,17 @@
 
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 import torch
 from PIL import Image
 from transformers import AutoProcessor, VisionEncoderDecoderModel
+
+# Suprimir warnings específicos
+warnings.filterwarnings("ignore", message=".*use_fast.*")
+warnings.filterwarnings("ignore", message=".*slow processor.*")
 
 # Añadir rutas necesarias al path
 current_dir = Path(__file__).parent
@@ -25,12 +30,13 @@ from utils.utils import (
 class DolphinTableDetector:
     """Detector de tablas usando el modelo DOLPHIN"""
     
-    def __init__(self, model_path: Optional[str] = None):
+    def __init__(self, model_path: Optional[str] = None, device: Optional[str] = None):
         """Initialize the DOLPHIN model
         
         Args:
             model_path: Path to local model or Hugging Face model ID.
                        If None, uses default path: dolphin/models/hf_model
+            device: Device to run inference on. If None, auto-detects CUDA availability.
         """
         if model_path is None:
             # Usar ruta predeterminada relativa a este archivo
@@ -46,14 +52,21 @@ class DolphinTableDetector:
             )
         
         # Load model from local path or Hugging Face hub
-        self.processor = AutoProcessor.from_pretrained(str(self.model_path))
+        self.processor = AutoProcessor.from_pretrained(str(self.model_path), use_fast=True)
         self.model = VisionEncoderDecoderModel.from_pretrained(str(self.model_path))
         self.model.eval()
         
         # Set device and precision
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        if device is not None:
+            self.device = device
+        else:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        
         self.model.to(self.device)
-        self.model = self.model.half()  # Always use half precision by default
+        
+        # Use half precision only on CUDA
+        if self.device == "cuda":
+            self.model = self.model.half()
         
         # set tokenizer
         self.tokenizer = self.processor.tokenizer
@@ -70,7 +83,11 @@ class DolphinTableDetector:
         """
         # Prepare image
         inputs = self.processor(image, return_tensors="pt")
-        pixel_values = inputs.pixel_values.half().to(self.device)
+        pixel_values = inputs.pixel_values.to(self.device)
+        
+        # Use half precision only on CUDA
+        if self.device == "cuda":
+            pixel_values = pixel_values.half()
         
         # Prepare prompt
         prompt = f"<s>{prompt} <Answer/>"
@@ -192,18 +209,19 @@ def detect_tables_dolphin(image: Image.Image, model_path: Optional[str] = None) 
 # Instancia global del detector para evitar cargar el modelo múltiples veces
 _global_detector = None
 
-def get_dolphin_detector(model_path: Optional[str] = None) -> DolphinTableDetector:
+def get_dolphin_detector(model_path: Optional[str] = None, device: Optional[str] = None) -> DolphinTableDetector:
     """Obtener instancia global del detector DOLPHIN
     
     Args:
         model_path: Path to model. If None, uses default path.
+        device: Device to run inference on. If None, auto-detects CUDA availability.
         
     Returns:
         Global DolphinTableDetector instance
     """
     global _global_detector
     if _global_detector is None:
-        _global_detector = DolphinTableDetector(model_path)
+        _global_detector = DolphinTableDetector(model_path, device)
     return _global_detector
 
 def detect_tables_dolphin_cached(image: Image.Image, model_path: Optional[str] = None) -> List[Dict[str, Any]]:

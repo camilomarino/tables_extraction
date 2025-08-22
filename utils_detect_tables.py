@@ -226,19 +226,19 @@ def visualize_detected_tables(img: Image.Image, det_tables: List[Dict[str, Any]]
     model_styles = {
         'dolphin_only': {
             'color': (0.2, 0.6, 1.0),  # Azul
-            'label': '🐬 DOLPHIN',
+            'label': 'DOLPHIN',
             'linestyle': '-',
             'hatch': '////'
         },
         'table_transformer_only': {
             'color': (1.0, 0.4, 0.2),  # Naranja/Rojo
-            'label': '🤖 Table Transformer',
+            'label': 'Table Transformer',
             'linestyle': '--',
             'hatch': '\\\\\\\\'
         },
         'combined': {
             'color': (0.2, 0.8, 0.3),  # Verde
-            'label': '🔗 Combined',
+            'label': 'Combined',
             'linestyle': '-',
             'hatch': '++++'
         }
@@ -375,21 +375,21 @@ def visualize_combined_detections(
     styles = {
         'dolphin': {
             'color': (0.2, 0.6, 1.0),  # Azul
-            'label': '🐬 DOLPHIN Original',
+            'label': 'DOLPHIN Original',
             'linestyle': '--',
             'linewidth': 2,
             'alpha': 0.4
         },
         'table_transformer': {
             'color': (1.0, 0.4, 0.2),  # Naranja
-            'label': '🤖 Table Transformer Original',
+            'label': 'Table Transformer Original',
             'linestyle': ':',
             'linewidth': 2,
             'alpha': 0.4
         },
         'combined': {
             'color': (0.2, 0.8, 0.3),  # Verde
-            'label': '🔗 Combined Result',
+            'label': 'Combined Result',
             'linestyle': '-',
             'linewidth': 4,
             'alpha': 0.7

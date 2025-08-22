@@ -248,3 +248,8 @@ secrets.json
 *.mov
 *.mkv
 *.pdf
+
+
+# Other
+images
+result

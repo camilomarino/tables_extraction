@@ -3,11 +3,16 @@
 import json
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 
 import torch
 from PIL import Image
+
+# Suprimir warnings de modelos
+warnings.filterwarnings("ignore", message=".*pretrained.*")
+warnings.filterwarnings("ignore", message=".*deprecated.*")
 
 # Añadir rutas necesarias al path
 current_dir = Path(__file__).parent

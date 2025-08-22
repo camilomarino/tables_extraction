@@ -428,10 +428,10 @@ class MarkdownConverter:
                                     markdown_content)
 
             # Find the starting tag of the formula
-            markdown_content = markdown_content.replace("\[ \\\\", "$$ \\\\")
+            markdown_content = markdown_content.replace(r"\[ \\", "$$ \\\\")
 
             # Find the ending tag of the formula (ensure this is the only ending tag)
-            markdown_content = markdown_content.replace("\\\\ \]", "\\\\ $$")
+            markdown_content = markdown_content.replace(r"\\ \]", "\\\\ $$")
 
             # Fix other common LaTeX issues
             replacements = [

@@ -753,14 +753,14 @@ class TableExtractionPipeline(object):
             det_args = type('Args', (object,), det_config)
             det_args.device = det_device
             self.det_model, _, _ = build_model(det_args)
-            print("Detection model initialized.")
+            # print("Detection model initialized.")  # Comentado para no interrumpir barras de progreso
 
             if not det_model_path is None:
                 self.det_model.load_state_dict(torch.load(det_model_path,
                                                      map_location=torch.device(det_device)))
                 self.det_model.to(det_device)
                 self.det_model.eval()
-                print("Detection model weights loaded.")
+                # print("Detection model weights loaded.")  # Comentado para no interrumpir barras de progreso
             else:
                 self.det_model = None
 

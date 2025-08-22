@@ -45,6 +45,7 @@ def detect_tables(
     output_dir: Path = typer.Argument(..., help="Directory to save detection results"),
     method: str = typer.Option("dolphin", help="Detection method: 'dolphin', 'table_transformer', 'both', or 'combined'"),
     device: str = typer.Option("cuda", help="Device to run inference on ('cuda' or 'cpu')"),
+    gpu_id: int = typer.Option(0, help="GPU device ID to use when device='cuda' (0, 1, etc.)"),
     visualize: bool = typer.Option(True, help="Generate visualization of detected tables"),
     crop_padding: int = typer.Option(10, help="Padding around detected tables when cropping"),
     iou_threshold: float = typer.Option(0.7, help="IoU threshold for combining detections in 'combined' mode")
@@ -66,10 +67,32 @@ def detect_tables(
     
     If models don't exist, run ./download_models.sh first to download them.
     """
+    import torch
+    
     # Validar método
     if method not in ["dolphin", "table_transformer", "both", "combined"]:
         typer.echo(f"Error: método '{method}' no válido. Use 'dolphin', 'table_transformer', 'both', o 'combined'.")
         raise typer.Exit(1)
+    
+    # Configurar device específico
+    if device == "cuda":
+        if not torch.cuda.is_available():
+            typer.echo("❌ CUDA no está disponible en este sistema. Usando CPU.")
+            device = "cpu"
+            final_device = "cpu"
+        else:
+            num_gpus = torch.cuda.device_count()
+            if gpu_id >= num_gpus:
+                typer.echo(f"❌ GPU ID {gpu_id} no está disponible. GPUs disponibles: 0-{num_gpus-1}")
+                typer.echo(f"🔄 Usando GPU 0 en su lugar.")
+                gpu_id = 0
+            
+            final_device = f"cuda:{gpu_id}"
+            torch.cuda.set_device(gpu_id)
+            typer.echo(f"🎯 Usando GPU {gpu_id}: {torch.cuda.get_device_name(gpu_id)}")
+    else:
+        final_device = "cpu"
+        typer.echo("💻 Usando CPU para inferencia")
     
     # Crear directorio de salida si no existe
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -79,45 +102,43 @@ def detect_tables(
     table_transformer_detector = None
     
     if method in ["dolphin", "both", "combined"]:
-        typer.echo("🐬 Inicializando el modelo DOLPHIN...")
         with tqdm(
             total=1, 
-            desc="Cargando DOLPHIN", 
-            leave=False, 
-            ncols=100, 
-            bar_format="{l_bar}{bar}"
+            desc="🐬 Cargando DOLPHIN", 
+            leave=True, 
+            ncols=60,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}|"
         ) as pbar:
             start_time = time.time()
             try:
-                dolphin_detector = get_dolphin_detector()
+                dolphin_detector = get_dolphin_detector(device=final_device)
                 loading_time = time.time() - start_time
                 pbar.update(1)
-                typer.echo(f"✅ DOLPHIN cargado en {loading_time:.2f}s")
-                typer.echo(f"📱 Dispositivo DOLPHIN: {dolphin_detector.device}")
+                pbar.set_description(f"✅ DOLPHIN cargado ({loading_time:.2f}s)")
             except Exception as e:
-                typer.echo(f"❌ Error cargando DOLPHIN: {str(e)}")
+                pbar.set_description(f"❌ Error cargando DOLPHIN")
+                typer.echo(f"Error: {str(e)}")
                 if method == "dolphin":
                     raise typer.Exit(1)
                 dolphin_detector = None
     
     if method in ["table_transformer", "both", "combined"]:
-        typer.echo("🤖 Inicializando el modelo Table Transformer...")
         with tqdm(
             total=1, 
-            desc="Cargando Table Transformer", 
-            leave=False, 
-            ncols=100, 
-            bar_format="{l_bar}{bar}"
+            desc="🤖 Cargando Table Transformer", 
+            leave=True, 
+            ncols=60,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}|"
         ) as pbar:
             start_time = time.time()
             try:
-                table_transformer_detector = get_table_transformer_detector(device=device)
+                table_transformer_detector = get_table_transformer_detector(device=final_device)
                 loading_time = time.time() - start_time
                 pbar.update(1)
-                typer.echo(f"✅ Table Transformer cargado en {loading_time:.2f}s")
-                typer.echo(f"📱 Dispositivo Table Transformer: {device}")
+                pbar.set_description(f"✅ Table Transformer cargado ({loading_time:.2f}s)")
             except Exception as e:
-                typer.echo(f"❌ Error cargando Table Transformer: {str(e)}")
+                pbar.set_description(f"❌ Error cargando Table Transformer")
+                typer.echo(f"Error: {str(e)}")
                 if method == "table_transformer":
                     raise typer.Exit(1)
                 table_transformer_detector = None
@@ -141,10 +162,11 @@ def detect_tables(
     # Procesar cada imagen con una barra de progreso
     with tqdm(
         total=len(image_files), 
-        desc="Processing images", 
-        unit="img", 
-        ncols=100, 
-        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+        desc="🔍 Procesando", 
+        unit=" img", 
+        ncols=90,
+        bar_format="{desc} {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
+        leave=True
     ) as pbar:
         for img_path in image_files:
             try:
@@ -176,10 +198,8 @@ def detect_tables(
                             if visualize:
                                 viz_path = output_dir / f"{base_name}_dolphin_visualization.png"
                                 visualize_detected_tables(img, dolphin_objects, str(viz_path))
-                                
-                            pbar.write(f"🐬 DOLPHIN: Found {len(dolphin_objects)} table(s) in {img_path.name}")
                     except Exception as e:
-                        pbar.write(f"❌ Error DOLPHIN processing {img_path.name}: {str(e)}")
+                        typer.echo(f"❌ Error DOLPHIN processing {img_path.name}: {str(e)}")
                         result["dolphin_tables_found"] = 0
                         result["dolphin_objects"] = []
                 
@@ -202,10 +222,8 @@ def detect_tables(
                             if visualize:
                                 viz_path = output_dir / f"{base_name}_table_transformer_visualization.png"
                                 visualize_detected_tables(img, tt_objects, str(viz_path))
-                                
-                            pbar.write(f"🤖 Table Transformer: Found {len(tt_objects)} table(s) in {img_path.name}")
                     except Exception as e:
-                        pbar.write(f"❌ Error Table Transformer processing {img_path.name}: {str(e)}")
+                        typer.echo(f"❌ Error Table Transformer processing {img_path.name}: {str(e)}")
                         result["table_transformer_tables_found"] = 0
                         result["tt_objects"] = []
                 
@@ -241,8 +259,7 @@ def detect_tables(
                                 dolphin_only_count = len([obj for obj in combined_objects if obj.get('source') == 'dolphin_only'])
                                 tt_only_count = len([obj for obj in combined_objects if obj.get('source') == 'table_transformer_only'])
                                 
-                                pbar.write(f"🔗 COMBINED: Found {len(combined_objects)} table(s) in {img_path.name}")
-                                pbar.write(f"    Combined: {combined_count}, DOLPHIN only: {dolphin_only_count}, TT only: {tt_only_count}")
+                                pbar.set_postfix_str(f"COMBINED: {len(combined_objects)} table(s) (C:{combined_count}, D:{dolphin_only_count}, T:{tt_only_count}) - {img_path.name}")
                         else:
                             result["combined_tables_found"] = 0
                     except Exception as e:
@@ -252,9 +269,10 @@ def detect_tables(
                 all_results.append(result)
                 
             except Exception as e:
-                pbar.write(f"❌ Error general processing {img_path.name}: {str(e)}")
+                typer.echo(f"❌ Error general processing {img_path.name}: {str(e)}")
                 continue
             
+            # Actualizar barra de progreso
             pbar.update(1)
 
     # Calcular estadísticas
