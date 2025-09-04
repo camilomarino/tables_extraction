@@ -12,9 +12,9 @@ from PIL import Image
 from tqdm.auto import tqdm
 
 # Añadir rutas necesarias al path
-sys.path.append("table_transformer")
-sys.path.append("src_table-transformer_original")
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+script_dir = Path(__file__).parent.absolute()
+sys.path.insert(0, str(script_dir))
+sys.path.append(str(script_dir / "table_transformer"))
 
 # Importar reconocedor de estructura
 from table_transformer.recognizer import (

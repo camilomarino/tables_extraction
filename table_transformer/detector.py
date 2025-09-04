@@ -17,11 +17,12 @@ warnings.filterwarnings("ignore", message=".*deprecated.*")
 # Añadir rutas necesarias al path
 current_dir = Path(__file__).parent
 root_dir = current_dir.parent
-sys.path.append(str(current_dir / "src"))
+src_dir = current_dir / "src"
+sys.path.insert(0, str(src_dir))
 sys.path.append(str(current_dir / "detr"))
 sys.path.append(str(root_dir))
 
-from src.inference import (
+from inference import (
     TableExtractionPipeline,
     detection_transform,
     outputs_to_objects,

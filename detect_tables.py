@@ -12,9 +12,10 @@ from PIL import Image
 from tqdm.auto import tqdm
 
 # Añadir rutas necesarias al path
-sys.path.append("dolphin")
-sys.path.append("table_transformer")
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+script_dir = Path(__file__).parent.absolute()
+sys.path.insert(0, str(script_dir))
+sys.path.append(str(script_dir / "dolphin"))
+sys.path.append(str(script_dir / "table_transformer"))
 
 from dolphin.detector import (
     detect_tables_dolphin_cached,
