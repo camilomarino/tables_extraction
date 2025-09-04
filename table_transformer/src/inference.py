@@ -19,9 +19,13 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import Patch
 
-from .main import get_model
 import postprocess
-sys.path.append("../detr")
+import sys
+import os
+# Agregar el directorio detr al path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+detr_path = os.path.join(os.path.dirname(current_dir), "detr")
+sys.path.append(detr_path)
 from models import build_model
 
 class MaxResize(object):

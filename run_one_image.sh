@@ -22,7 +22,7 @@ show_help() {
     echo ""
     echo "Opciones:"
     echo "  --method METHOD      Método de detección: dolphin, table_transformer, combined (default: combined)"
-    echo "  --languages LANGS    Idiomas para OCR, separados por coma (default: en)"
+    echo "  --languages LANGS    Idiomas para OCR, separados por coma (default: es)"
     echo "  --gpu-id ID          ID de GPU a usar (default: 0)"
     echo "  --device DEVICE      Dispositivo: cuda o cpu (default: cuda)"
     echo "  --min-confidence THR Confianza mínima para OCR (default: 0.4)"
@@ -50,7 +50,7 @@ trap cleanup EXIT
 
 # Valores por defecto
 METHOD="combined"
-LANGUAGES="en"
+LANGUAGES="es"
 GPU_ID=0
 DEVICE="cuda"
 MIN_CONFIDENCE=0.4
@@ -121,11 +121,20 @@ fi
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
 
+# Crear estructura de directorios (igual que run_pipeline.sh)
+CROPS_DIR="$OUTPUT_DIR/table_crops"
+TOKENS_DIR="$OUTPUT_DIR/text_tokens"
+RESULTS_DIR="$OUTPUT_DIR/recognition_results"
+
+mkdir -p "$CROPS_DIR"
+mkdir -p "$TOKENS_DIR"
+mkdir -p "$RESULTS_DIR"
+
 # Crear carpetas temporales únicas
 TEMP_DIR=$(mktemp -d -t table_processing_XXXXXX)
 INPUT_TEMP_DIR="$TEMP_DIR/input"
-CROPS_TEMP_DIR="$TEMP_DIR/table_crops"
-TOKENS_TEMP_DIR="$TEMP_DIR/text_tokens"
+CROPS_TEMP_DIR="$TEMP_DIR/table_crops_temp"
+TOKENS_TEMP_DIR="$TEMP_DIR/text_tokens_temp"
 
 mkdir -p "$INPUT_TEMP_DIR"
 mkdir -p "$CROPS_TEMP_DIR"
@@ -169,7 +178,7 @@ if [ "$CROP_COUNT" -eq 0 ]; then
 fi
 echo -e "${GREEN}📊 Detectadas $CROP_COUNT tablas${NC}"
 
-# Crear directorio temporal solo para las tablas reales
+# Crear directorio temporal solo para las tablas reales (igual que run_pipeline.sh)
 CROPS_FILTERED_DIR="$TEMP_DIR/table_crops_filtered"
 mkdir -p "$CROPS_FILTERED_DIR"
 
@@ -223,9 +232,9 @@ echo -e "${GREEN}📝 Generados $TOKEN_COUNT archivos de tokens${NC}"
 echo ""
 
 # Paso 3: Reconocimiento de Estructura
-echo -e "${BLUE}📍 PASO 3: Reconocimiento de Estructura${NC}"
+echo -e "${BLUE}📍 PASO 3: Reconocimiento de Estructura de Tablas${NC}"
 
-RECOGNITION_CMD="./recognize_tables.py \"$CROPS_FILTERED_DIR\" \"$OUTPUT_DIR\" \"$TOKENS_TEMP_DIR\" --device $DEVICE --gpu-id $GPU_ID"
+RECOGNITION_CMD="./recognize_tables.py \"$CROPS_FILTERED_DIR\" \"$RESULTS_DIR\" \"$TOKENS_TEMP_DIR\" --device $DEVICE --gpu-id $GPU_ID"
 
 if [ "$VERBOSE" = true ]; then
     echo -e "${YELLOW}Ejecutando: $RECOGNITION_CMD${NC}"
@@ -242,28 +251,24 @@ echo ""
 # Copiar todos los resultados intermedios al directorio de salida
 echo -e "${BLUE}📦 Copiando resultados intermedios...${NC}"
 
-# Crear subdirectorios en la salida
-mkdir -p "$OUTPUT_DIR/table_crops"
-mkdir -p "$OUTPUT_DIR/text_tokens"
+# Copiar imagen original al directorio de salida
 mkdir -p "$OUTPUT_DIR/original"
-
-# Copiar imagen original
 cp "$INPUT_IMAGE" "$OUTPUT_DIR/original/"
 
-# Copiar crops de tablas (solo las tablas reales filtradas)
-if [ -d "$CROPS_FILTERED_DIR" ]; then
-    cp -r "$CROPS_FILTERED_DIR"/* "$OUTPUT_DIR/table_crops/" 2>/dev/null || true
+# Copiar crops de tablas originales (completos)
+if [ -d "$CROPS_TEMP_DIR" ]; then
+    cp -r "$CROPS_TEMP_DIR"/* "$CROPS_DIR/" 2>/dev/null || true
 fi
 
 # Copiar tokens de texto
 if [ -d "$TOKENS_TEMP_DIR" ]; then
-    cp -r "$TOKENS_TEMP_DIR"/* "$OUTPUT_DIR/text_tokens/" 2>/dev/null || true
+    cp -r "$TOKENS_TEMP_DIR"/* "$TOKENS_DIR/" 2>/dev/null || true
 fi
 
 # Contar resultados finales
-HTML_COUNT=$(find "$OUTPUT_DIR" -name "*.html" | wc -l)
-CSV_COUNT=$(find "$OUTPUT_DIR" -name "*.csv" | wc -l)
-JSON_COUNT=$(find "$OUTPUT_DIR" -name "*_recognition.json" | wc -l)
+HTML_COUNT=$(find "$RESULTS_DIR" -name "*.html" | wc -l)
+CSV_COUNT=$(find "$RESULTS_DIR" -name "*.csv" | wc -l)
+JSON_COUNT=$(find "$RESULTS_DIR" -name "*_recognition.json" | wc -l)
 
 echo -e "${GREEN}✅ Resultados copiados${NC}"
 echo ""
@@ -271,16 +276,22 @@ echo -e "${GREEN}🎉 ¡Procesamiento completado exitosamente!${NC}"
 echo ""
 echo -e "${YELLOW}📁 Todos los resultados en: $OUTPUT_DIR${NC}"
 echo -e "${YELLOW}   📷 Original: $OUTPUT_DIR/original/${NC}"
-echo -e "${YELLOW}   📋 Crops: $OUTPUT_DIR/table_crops/${NC}"
-echo -e "${YELLOW}   📝 Tokens: $OUTPUT_DIR/text_tokens/${NC}"
-echo -e "${YELLOW}   🏗️  Tablas: archivos HTML/CSV/JSON en raíz${NC}"
+echo -e "${YELLOW}   📋 Crops originales: $CROPS_DIR${NC}"
+echo -e "${YELLOW}   📝 Tokens de texto: $TOKENS_DIR${NC}"
+echo -e "${YELLOW}   🏗️  Estructura reconocida: $RESULTS_DIR${NC}"
 echo ""
-echo -e "${GREEN}📊 Estadísticas:${NC}"
+echo -e "${GREEN}📊 Estadísticas finales:${NC}"
 echo -e "${GREEN}   - Tablas detectadas: $CROP_COUNT${NC}"
 echo -e "${GREEN}   - Tablas procesadas: $FILTERED_COUNT${NC}"
 echo -e "${GREEN}   - Archivos HTML: $HTML_COUNT${NC}"
 echo -e "${GREEN}   - Archivos CSV: $CSV_COUNT${NC}"
 echo -e "${GREEN}   - Archivos JSON: $JSON_COUNT${NC}"
+
+# Verificar estadísticas detalladas si existe el archivo
+STATS_FILE="$RESULTS_DIR/recognition_statistics.json"
+if [ -f "$STATS_FILE" ]; then
+    echo -e "${YELLOW}📈 Estadísticas detalladas disponibles en: $STATS_FILE${NC}"
+fi
 
 if [ "$KEEP_TEMP" = true ]; then
     echo ""

@@ -17,10 +17,9 @@ warnings.filterwarnings("ignore", message=".*deprecated.*")
 # Añadir rutas necesarias al path
 current_dir = Path(__file__).parent
 root_dir = current_dir.parent
-src_original_dir = root_dir / "src_table-transformer_original"
-sys.path.append(str(current_dir / "src"))
+src_dir = current_dir / "src"
+sys.path.insert(0, str(src_dir))
 sys.path.append(str(current_dir / "detr"))
-sys.path.append(str(src_original_dir))
 sys.path.append(str(root_dir))
 
 from inference import (
@@ -52,8 +51,8 @@ class TableStructureRecognizer:
             model_path = str(current_dir / "models" / "TATR-v1.1-All-msft.pth")
         
         if config_path is None:
-            # Usar ruta predeterminada del archivo original
-            config_path = str(src_original_dir / "structure_config.json")
+            # Usar ruta predeterminada en src/
+            config_path = str(current_dir / "src" / "structure_config.json")
         
         self.model_path = Path(model_path)
         self.config_path = Path(config_path)

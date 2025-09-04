@@ -19,7 +19,7 @@ app = typer.Typer()
 def extract_text(
     input_dir: Path = typer.Argument(..., help="Directory containing images"),
     output_dir: Path = typer.Argument(..., help="Directory to save text extraction results"),
-    languages: str = typer.Option("en", help="OCR languages (comma-separated: en,es,fr)"),
+    languages: str = typer.Option("es", help="OCR languages (comma-separated: en,es,fr)"),
     min_confidence: float = typer.Option(0.3, help="Minimum confidence threshold (0.0-1.0)"),
     device: str = typer.Option("cuda", help="Device to use ('cuda' or 'cpu')"),
     gpu_id: int = typer.Option(0, help="GPU device ID to use when device='cuda' (0, 1, etc.)"),
