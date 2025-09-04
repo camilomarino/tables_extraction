@@ -33,6 +33,18 @@ else
     exit 1
 fi
 
+# Descargar el modelo de reconocimiento de estructura
+STRUCTURE_MODEL_URL="https://huggingface.co/bsmock/TATR-v1.1-All/resolve/main/TATR-v1.1-All-msft.pth"
+STRUCTURE_MODEL_PATH="${MODEL_DIR}/TATR-v1.1-All-msft.pth"
+
+echo -e "${YELLOW}Descargando modelo de reconocimiento de estructura...${NC}"
+if wget -q --show-progress $STRUCTURE_MODEL_URL -O $STRUCTURE_MODEL_PATH; then
+    echo -e "${GREEN}✓ Modelo de estructura descargado correctamente en: ${STRUCTURE_MODEL_PATH}${NC}"
+else
+    echo -e "${YELLOW}⚠ No se pudo descargar el modelo de estructura. El reconocimiento funcionará en modo limitado.${NC}"
+    echo -e "${YELLOW}  Puedes continuar usando solo la funcionalidad de detección.${NC}"
+fi
+
 # Descargar el modelo Dolphin
 echo -e "${YELLOW}Descargando modelo Dolphin desde Hugging Face Hub...${NC}"
 
@@ -85,6 +97,9 @@ fi
 
 echo -e "${GREEN}¡Descarga de modelos completada!${NC}"
 echo -e "${YELLOW}Modelos disponibles:${NC}"
-echo -e "${YELLOW}  - Table Transformer: ${DETECTION_MODEL_PATH}${NC}"
+echo -e "${YELLOW}  - Table Transformer Detection: ${DETECTION_MODEL_PATH}${NC}"
+echo -e "${YELLOW}  - Table Transformer Structure: ${STRUCTURE_MODEL_PATH}${NC}"
 echo -e "${YELLOW}  - Dolphin: ${DOLPHIN_MODEL_PATH}${NC}"
-echo -e "${YELLOW}Ahora puedes ejecutar inference_detection.py para detectar tablas en imágenes.${NC}"
+echo -e "${YELLOW}Ahora puedes ejecutar:${NC}"
+echo -e "${YELLOW}  - detect_tables.py para detectar tablas en imágenes${NC}"
+echo -e "${YELLOW}  - recognize_tables.py para reconocer estructura de tablas${NC}"
