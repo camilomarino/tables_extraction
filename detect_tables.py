@@ -118,7 +118,41 @@ def detect_tables(
                 pbar.set_description(f"✅ DOLPHIN cargado ({loading_time:.2f}s)")
             except Exception as e:
                 pbar.set_description(f"❌ Error cargando DOLPHIN")
-                typer.echo(f"Error: {str(e)}")
+                
+                # Debug: mostrar estructura de la carpeta dolphin
+                typer.echo(f"\n🔍 DEBUG - Estructura de la carpeta dolphin:")
+                dolphin_dir = script_dir / "dolphin"
+                if dolphin_dir.exists():
+                    try:
+                        import subprocess
+                        result = subprocess.run(
+                            ["find", str(dolphin_dir), "-type", "f", "-exec", "ls", "-lh", "{}", "+"],
+                            capture_output=True, text=True
+                        )
+                        if result.returncode == 0:
+                            typer.echo(result.stdout)
+                        else:
+                            # Fallback manual
+                            typer.echo(f"📁 {dolphin_dir}")
+                            for root, dirs, files in os.walk(dolphin_dir):
+                                level = root.replace(str(dolphin_dir), '').count(os.sep)
+                                indent = ' ' * 2 * level
+                                typer.echo(f"{indent}📁 {os.path.basename(root)}/")
+                                subindent = ' ' * 2 * (level + 1)
+                                for file in files:
+                                    file_path = os.path.join(root, file)
+                                    try:
+                                        size = os.path.getsize(file_path)
+                                        size_str = f"({size} bytes)"
+                                    except:
+                                        size_str = "(size unknown)"
+                                    typer.echo(f"{subindent}📄 {file} {size_str}")
+                    except Exception as debug_e:
+                        typer.echo(f"Error en debug: {debug_e}")
+                else:
+                    typer.echo(f"❌ Directorio dolphin no existe: {dolphin_dir}")
+            
+                typer.echo(f"Error original: {str(e)}")
                 if method == "dolphin":
                     raise typer.Exit(1)
                 dolphin_detector = None
