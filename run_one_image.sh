@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Procesamiento de una sola imagen con limpieza automática
-# Uso: ./run_one_image.sh input_image.png output_dir/
+# Uso: ./run_one_image.sh script_dir input_image.png output_dir/
 
 # Colores para mensajes
 GREEN='\033[0;32m'
@@ -14,9 +14,10 @@ NC='\033[0m' # No Color
 show_help() {
     echo -e "${BLUE}Procesamiento de Una Sola Imagen${NC}"
     echo ""
-    echo "Uso: $0 <input_image> <output_dir> [opciones]"
+    echo "Uso: $0 <script_dir> <input_image> <output_dir> [opciones]"
     echo ""
     echo "Argumentos:"
+    echo "  script_dir    Directorio donde están los scripts de procesamiento"
     echo "  input_image   Imagen de entrada (PNG, JPG, PDF, etc.)"
     echo "  output_dir    Directorio donde guardar todos los resultados"
     echo ""
@@ -31,7 +32,7 @@ show_help() {
     echo "  --help              Mostrar esta ayuda"
     echo ""
     echo "Ejemplo:"
-    echo "  $0 document.png results/ --languages \"en,es\" --verbose"
+    echo "  $0 /workdir/bin/ document.png results/ --languages \"en,es\" --verbose"
     echo ""
     echo "Nota: Se crean carpetas temporales que se borran automáticamente al final"
 }
@@ -58,15 +59,16 @@ KEEP_TEMP=false
 VERBOSE=false
 
 # Verificar argumentos mínimos
-if [ $# -lt 2 ]; then
-    echo -e "${RED}Error: Se requieren al menos 2 argumentos${NC}"
+if [ $# -lt 3 ]; then
+    echo -e "${RED}Error: Se requieren al menos 3 argumentos${NC}"
     show_help
     exit 1
 fi
 
-INPUT_IMAGE="$1"
-OUTPUT_DIR="$2"
-shift 2
+SCRIPT_DIR="$1"
+INPUT_IMAGE="$2"
+OUTPUT_DIR="$3"
+shift 3
 
 # Procesar opciones
 while [[ $# -gt 0 ]]; do
@@ -111,6 +113,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Verificar directorio de scripts
+if [ ! -d "$SCRIPT_DIR" ]; then
+    echo -e "${RED}❌ Error: El directorio de scripts '$SCRIPT_DIR' no existe${NC}"
+    exit 1
+fi
+
+# Convertir a ruta absoluta
+SCRIPT_DIR=$(realpath "$SCRIPT_DIR")
+
 # Verificar archivo de entrada
 if [ ! -f "$INPUT_IMAGE" ]; then
     echo -e "${RED}❌ Error: El archivo '$INPUT_IMAGE' no existe${NC}"
@@ -144,6 +155,7 @@ mkdir -p "$TOKENS_TEMP_DIR"
 BASENAME=$(basename "$INPUT_IMAGE" | sed 's/\.[^.]*$//')
 
 echo -e "${BLUE}🚀 Procesando imagen: $(basename "$INPUT_IMAGE")${NC}"
+echo -e "${YELLOW}📁 Scripts: $SCRIPT_DIR${NC}"
 echo -e "${YELLOW}📁 Salida: $OUTPUT_DIR${NC}"
 echo -e "${YELLOW}🗂️  Temp: $TEMP_DIR${NC}"
 if [ "$KEEP_TEMP" = true ]; then
@@ -157,7 +169,7 @@ cp "$INPUT_IMAGE" "$INPUT_TEMP_DIR/"
 # Paso 1: Detección de Tablas
 echo -e "${BLUE}📍 PASO 1: Detección de Tablas${NC}"
 
-DETECTION_CMD="./detect_tables.py \"$INPUT_TEMP_DIR\" \"$CROPS_TEMP_DIR\" --method $METHOD --device $DEVICE --gpu-id $GPU_ID"
+DETECTION_CMD="$SCRIPT_DIR/detect_tables.py \"$INPUT_TEMP_DIR\" \"$CROPS_TEMP_DIR\" --method $METHOD --device $DEVICE --gpu-id $GPU_ID"
 
 if [ "$VERBOSE" = true ]; then
     echo -e "${YELLOW}Ejecutando: $DETECTION_CMD${NC}"
@@ -213,7 +225,7 @@ echo ""
 # Paso 2: Extracción de Texto
 echo -e "${BLUE}📍 PASO 2: Extracción de Texto con OCR${NC}"
 
-OCR_CMD="./extract_text.py \"$CROPS_FILTERED_DIR\" \"$TOKENS_TEMP_DIR\" --languages \"$LANGUAGES\" --min-confidence $MIN_CONFIDENCE --device $DEVICE --gpu-id $GPU_ID"
+OCR_CMD="$SCRIPT_DIR/extract_text.py \"$CROPS_FILTERED_DIR\" \"$TOKENS_TEMP_DIR\" --languages \"$LANGUAGES\" --min-confidence $MIN_CONFIDENCE --device $DEVICE --gpu-id $GPU_ID"
 
 if [ "$VERBOSE" = true ]; then
     OCR_CMD="$OCR_CMD --verbose"
@@ -234,7 +246,7 @@ echo ""
 # Paso 3: Reconocimiento de Estructura
 echo -e "${BLUE}📍 PASO 3: Reconocimiento de Estructura de Tablas${NC}"
 
-RECOGNITION_CMD="./recognize_tables.py \"$CROPS_FILTERED_DIR\" \"$RESULTS_DIR\" \"$TOKENS_TEMP_DIR\" --device $DEVICE --gpu-id $GPU_ID"
+RECOGNITION_CMD="$SCRIPT_DIR/recognize_tables.py \"$CROPS_FILTERED_DIR\" \"$RESULTS_DIR\" \"$TOKENS_TEMP_DIR\" --device $DEVICE --gpu-id $GPU_ID"
 
 if [ "$VERBOSE" = true ]; then
     echo -e "${YELLOW}Ejecutando: $RECOGNITION_CMD${NC}"
