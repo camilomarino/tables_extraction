@@ -251,19 +251,19 @@ def calculate_recognition_statistics(
     
     for result in all_results:
         # Contadores básicos
-        objects = result.get('objects', [])
-        cells = result.get('cells', [])
+        objects = result.get('objects', 0)  # Ya es un número, no una lista
+        cells = result.get('cells', 0)      # Ya es un número, no una lista
         html_content = result.get('html', '')
         csv_content = result.get('csv', '')
         confidence = result.get('confidence_score', 0.0)
         
-        if objects:
+        if objects > 0:
             stats['tables_with_structure'] += 1
-            stats['total_objects'] += len(objects)
+            stats['total_objects'] += objects  # Ya es un número
             
-        if cells:
+        if cells > 0:
             stats['tables_with_cells'] += 1
-            stats['total_cells'] += len(cells)
+            stats['total_cells'] += cells  # Ya es un número
             
         if html_content and html_content.strip():
             stats['tables_with_html'] += 1
@@ -274,20 +274,8 @@ def calculate_recognition_statistics(
         if confidence > 0:
             confidence_scores.append(confidence)
         
-        # Contar tipos de objetos
-        for obj in objects:
-            obj_type = obj.get('label', 'unknown')
-            stats['object_type_counts'][obj_type] = stats['object_type_counts'].get(obj_type, 0) + 1
-        
-        # Contar tipos de celdas
-        for cell in cells:
-            if isinstance(cell, dict):
-                if cell.get('column header', False):
-                    stats['cell_type_counts']['header_cells'] += 1
-                elif cell.get('projected row header', False):
-                    stats['cell_type_counts']['row_header_cells'] += 1
-                else:
-                    stats['cell_type_counts']['data_cells'] += 1
+        # Ya no podemos contar tipos específicos porque objects y cells son solo números
+        # Esta información detallada se perdió en el procesamiento anterior
     
     # Calcular promedio de confianza
     if confidence_scores:

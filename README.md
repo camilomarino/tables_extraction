@@ -1,89 +1,57 @@
-# Table Detection Project ✨
+# Pipeline de Procesamiento de Tablas
 
-Detección unificada de tablas usando **DOLPHIN** (visión-lenguaje) y **Table Transformer** (DETR especializado).
+Extrae, procesa y estructura tablas de documentos usando AI.
 
-## 🚀 Instalación Rápida
-
-```bash
-./download_models.sh
-pip install torch torchvision transformers pillow typer tqdm opencv-python numpy matplotlib
-```
-
-## 🎯 Uso
+## Instalación
 
 ```bash
-# Método único
-./detect_tables.py images/ results/ --method dolphin
-./detect_tables.py images/ results/ --method table_transformer
-
-# Comparar ambos métodos
-./detect_tables.py images/ results/ --method both
-
-# Combinar ambos métodos (IoU inteligente) ⭐
-./detect_tables.py images/ results/ --method combined --iou-threshold 0.7
-
-# Multi-GPU 🎯
-./detect_tables.py images/ results/ --gpu-id 1 --method combined
-```
-
-## 📊 Rendimiento
-
-| Método | Velocidad | Precisión | Uso |
-|--------|-----------|-----------|-----|
-| DOLPHIN | ~1.1s/img | Alta | Detección estable |
-| Table Transformer | ~0.04s/img | Alta | Detección rápida |
-| **Combined** | ~1.15s/img | **Muy Alta** | **Mejor robustez** |
-
-## 💻 API Programática
-
-```python
-from PIL import Image
-from dolphin.detector import get_dolphin_detector
-from table_transformer.detector import get_table_transformer_detector
-from utils_detect_tables import combine_detections
-
-# Cargar detectores una sola vez
-dolphin = get_dolphin_detector(device="cuda:0")
-tt = get_table_transformer_detector(device="cuda:1")
-
-# Procesar imagen
-image = Image.open("document.png")
-dolphin_tables = dolphin.detect_tables(image)
-tt_tables = tt.detect_tables(image)
-
-# Combinar resultados
-combined = combine_detections(dolphin_tables, tt_tables, iou_threshold=0.7)
-```
-
-## ⚙️ Parámetros Principales
-
-- `--method`: `dolphin` | `table_transformer` | `both` | `combined`
-- `--gpu-id`: Seleccionar GPU específica (0, 1, etc.)
-- `--device`: `cuda` | `cpu`
-- `--iou-threshold`: Umbral IoU para modo combined (0.7)
-- `--no-visualize`: Sin visualizaciones (más rápido)
-
-## 📁 Salidas
-
-- `{imagen}_objects.json`: Detecciones en formato estándar
-- `{imagen}_table_{N}.png`: Tablas recortadas
-- `{imagen}_visualization.png`: Visualización opcional
-
-**Modo Combined**: Incluye metadatos adicionales (`source`, `iou`, bboxes originales)
-
-## 🛠️ Troubleshooting
-
-```bash
-# Verificar modelos
+# Descargar modelos
 ./download_models.sh
 
-# Verificar CUDA
-python3 -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPUs: {torch.cuda.device_count()}')"
-
-# Usar CPU si hay problemas de memoria
-./detect_tables.py images/ results/ --device cpu
+# Instalar dependencias
+pip install torch transformers pillow typer easyocr
 ```
 
----
+## Uso Simple
 
-**Características**: Interfaz unificada • Multi-GPU • Modo combined con IoU • Sin warnings • Barras de progreso optimizadas
+```bash
+# Todo en un comando
+./run_pipeline.sh carpeta_documentos/ resultados/
+```
+
+## Uso Manual (3 pasos)
+
+### 1. Detectar tablas
+```bash
+./detect_tables.py documentos/ tablas_recortadas/
+```
+
+### 2. Extraer texto
+```bash
+./extract_text.py tablas_recortadas/ tokens_texto/
+```
+
+### 3. Reconocer estructura
+```bash
+./recognize_tables.py tablas_recortadas/ resultados_finales/ tokens_texto/
+```
+
+## Resultados
+
+El proceso genera:
+- **HTML**: Tablas visualizables en navegador
+- **CSV**: Datos importables en Excel
+- **JSON**: Estructura detallada para programas
+
+## Opciones Útiles
+
+```bash
+# Múltiples idiomas
+./extract_text.py tablas/ tokens/ --languages "en,es"
+
+# Sin visualizaciones (más rápido)
+./recognize_tables.py tablas/ resultados/ tokens/ --no-visualize
+
+# Usar CPU si no hay GPU
+./detect_tables.py docs/ tablas/ --device cpu
+```
